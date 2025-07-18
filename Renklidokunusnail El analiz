@@ -1,0 +1,54 @@
+
+const videoElement = document.getElementById('video');
+const canvasElement = document.getElementById('canvas');
+const canvasCtx = canvasElement.getContext('2d');
+const resultText = document.getElementById('result');
+
+const hands = new Hands({
+  locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+});
+
+hands.setOptions({
+  maxNumHands: 1,
+  modelComplexity: 1,
+  minDetectionConfidence: 0.8,
+  minTrackingConfidence: 0.5
+});
+
+hands.onResults(results => {
+  canvasCtx.save();
+  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+  if (results.multiHandLandmarks.length > 0) {
+    drawConnectors(canvasCtx, results.multiHandLandmarks[0], HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 3});
+    drawLandmarks(canvasCtx, results.multiHandLandmarks[0], {color: '#FF0000', lineWidth: 2});
+    
+    const landmarks = results.multiHandLandmarks[0];
+    const tip = landmarks[8];  // Ä°ÅŸaret parmaÄŸÄ± ucu Ã¶rneÄŸi
+    const base = landmarks[5]; // Ä°ÅŸaret parmaÄŸÄ± altÄ±
+
+    const nailLength = Math.abs(tip.y - base.y).toFixed(2);
+
+    if (nailLength < 0.03) {
+      resultText.innerText = "TÄ±rnak tipi: KÄ±sa ve doÄŸal. Nude tonlar Ã¶nerilir ðŸ’…";
+    } else if (nailLength < 0.07) {
+      resultText.innerText = "TÄ±rnak tipi: Orta uzunluk. FransÄ±z manikÃ¼r veya soft desenli Ã¶nerilir âœ¨";
+    } else {
+      resultText.innerText = "TÄ±rnak tipi: Uzun. Parlak, simli veya taÅŸlÄ± tasarÄ±mlar harika olur ðŸ’Ž";
+    }
+  } else {
+    resultText.innerText = "El algÄ±lanamadÄ±. Kameraya aÃ§Ä±k bir el gÃ¶sterin ðŸ–ï¸";
+  }
+
+  canvasCtx.restore();
+});
+
+const camera = new Camera(videoElement, {
+  onFrame: async () => {
+    await hands.send({image: videoElement});
+  },
+  width: 640,
+  height: 480
+});
+camera.start();
